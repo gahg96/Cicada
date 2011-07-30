@@ -1,0 +1,268 @@
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' cicada/logger -- logging facility for LotusScript                             '
+'                                                                               '
+' Version: 0.1.0                                                                '
+' Author:  Quildreen Motta <http://killdream.github.com/>                       '
+' URL:     http://github.com/killdream/cicada                                   '
+'                                                                               '
+'                                                                               '
+' This library is licensed under the permissive MIT licence:                    '
+'                                                                               '
+' Copyright (c) 2011 Quildreen Motta <http://killdream.github.com/>             '
+'                                                                               '
+' ----------------------------------------------------------------------        '
+' Permission is hereby granted, free of charge, to any person obtaining         '
+' a copy of this software and associated documentation files (the               '
+' "Software"), to deal in the Software without restriction, including           '
+' without limitation the rights to use, copy, modify, merge, publish,           '
+' distribute, sublicense, and/or sell copies of the Software, and to            '
+' permit persons to whom the Software is furnished to do so, subject to         '
+' the following conditions:                                                     '
+'                                                                               '
+' The above copyright notice and this permission notice shall be                '
+' included in all copies or substantial portions of the Software.               '
+'                                                                               '
+' THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,               '
+' EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF            '
+' MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND                         '
+' NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE        '
+' LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION        '
+' OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION         '
+' WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.               '
+' ----------------------------------------------------------------------        '
+'                                                                               '
+'==============================================================================='
+' -- Commentary                                                                 '
+'==============================================================================='
+'                                                                               '
+' See the `README.md' file.                                                     '
+'                                                                               '
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+const NEWLINE = EOL_CRLF
+
+
+public class Logger
+
+    public stream_template as String
+    public log_template    as String
+    public summary_size    as Long
+    public spacing         as Integer
+    public max_stream_size as Long
+
+    public info_style  as NotesRichTextStyle
+    public warn_style  as NotesRichTextStyle
+    public error_style as NotesRichTextStyle
+
+    db     as NotesDatabase
+    stream as NotesDocument
+
+
+    sub new              _
+    ( server   as String _
+    , database as String )
+        stream_template = "(Cicada/Stream)"
+        log_template    = "(Cicada/Log)"
+        
+        spacing         = 2
+        summary_size    = 255
+        max_stream_size = 1024 * 30
+
+        call openDatabase(server, database)
+        call setupStyles()
+    end sub
+
+
+    sub setupStyles()
+        set info_style  = setupInfoStyle()
+        set warn_style  = setupWarnStyle()
+        set error_style = setupErrorStyle()
+    end sub
+
+
+    function setupInfoStyle() _
+    as NotesRichTextStyle
+        dim session as new NotesSession
+
+        set setupInfoStyle        = session.createRichTextStyle()
+        setupInfoStyle.notesColor = COLOR_GRAY
+    end function
+
+
+    function setupWarnStyle() _
+    as NotesRichTextStyle
+        dim session as new NotesSession
+
+        set setupWarnStyle        = session.createRichTextStyle()
+        setupWarnStyle.notesColor = COLOR_DARK_YELLOW
+    end function
+
+
+    function setupErrorStyle() _
+    as NotesRichTextStyle
+        dim session as new NotesSession
+
+        set setupErrorStyle        = session.createRichTextStyle()
+        setupErrorStyle.notesColor = COLOR_DARK_RED
+    end function
+
+
+    function openDatabase  _
+    ( server   as String   _
+    , database as String ) _
+    as Boolean
+        set db     = new NotesDatabase(server, database)
+        set stream = makeStream()
+    end function
+
+
+    function makeStream() _
+    as NotesDocument
+        set makeStream      = new NotesDocument(db)
+
+        makeStream.form     = stream_template
+        makeStream.openDate = Today()
+        call makeStream.createRichTextItem("body")
+
+        call makeStream.save(false, false)
+    end function
+
+
+    sub closeStream           _
+    ( stream as NotesDocument )
+        stream.closeDate = Today()
+        call stream.save(false, false)
+    end sub
+
+
+    function insert            _
+    ( entry as NotesDocument ) _
+    as NotesDocument
+        call entry.save(false, false)
+        call pushToStream(entry)
+        set insert = entry
+    end function
+
+
+    function makeEntry  _
+    ( kind  as String   _
+    , title as String ) _
+    as NotesDocument
+        set makeEntry  = new NotesDocument(db)
+        makeEntry.form = log_template
+
+        makeEntry.title = title
+        makeEntry.kind  = kind
+        call makeEntry.createRichTextItem("body")
+    end function
+
+
+    sub pushToStream            _
+    ( document as NotesDocument )
+        dim body as NotesRichTextItem
+        set body = stream.getFirstItem("body")
+
+        with body
+            call .addNewLine(spacing)
+            call .appendText(getDate(document.lastModified))
+            call .addTab(1)
+            call .appendText(document.kind(0) + " — ")
+            call insertDocument(body, document)
+        end with
+
+        call stream.save(false, false)
+
+        if stream.size > max_stream_size then
+            call closeStream(stream)
+            set stream = makeStream()
+        end if
+    end sub
+
+
+    function getDate _
+    ( givenDate )    _
+    as String
+        getDate = "[" + Format(givenDate, "General Date") + "]"
+    end function
+
+
+    function insertDocument           _
+    ( body     as NotesRichTextItem   _
+    , document as NotesDocument     ) _
+    as NotesRichTextItem
+        dim message as NotesRichTextItem
+        set message = document.getFirstItem("body")
+
+        with body
+            call .appendDocLink(document, document.title(0))
+            call .appendText(document.title(0))
+            call .addNewLine(1)
+            call .appendText(message.abstract(summary_size, false, false))
+        end with
+
+        set insertDocument = body
+    end function
+
+
+    function info         _
+    ( title   as String   _
+    , message as String ) _
+    as NotesDocument
+        dim body as NotesRichTextItem
+
+        set info = makeEntry("info", title)
+        set body = info.getFirstItem("body")
+
+        with body
+            call .appendStyle(info_style)
+            call .appendText(message)
+        end with
+
+        insert info
+    end function
+
+
+    function warn         _
+    ( title   as String   _
+    , message as String ) _
+    as NotesDocument
+        dim body as NotesRichTextItem
+        
+        set warn = makeEntry("warn", title)
+        set body = warn.getFirstItem("body")
+
+        with body
+            call .appendStyle(warn_style)
+            call .appendText(message)
+        end with
+
+        insert warn
+    end function
+
+
+    function erro         _
+    ( title   as String   _
+    , message as String ) _
+    as NotesDocument
+        dim body as NotesRichTextItem
+        
+        set erro = makeEntry("error", title)
+        set body = erro.getFirstItem("body")
+
+        with body
+            call .appendStyle(error_style)
+            call .appendText(message)
+        end with
+
+        insert erro
+    end function
+
+
+    sub fatal _
+    ( message as String )
+        print getDate(Today) + " — FATAL ERROR: " + NEWLINE + message
+    end sub
+    
+end class
+
+
