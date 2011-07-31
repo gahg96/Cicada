@@ -267,7 +267,7 @@ public class CicadaLogger
 
         makeEntry.title = title
         makeEntry.kind  = kind
-        call makeEntry.createRichTextItem("body")
+        makeEntry.createRichTextItem("body")
     end function
 
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -292,10 +292,10 @@ public class CicadaLogger
         set body    = logData.getFirstItem("body")
 
         with body
-            if style is not nothing then
+            if not (style is nothing) then
                 call .appendstyle(style)
             end if
-            call .appendText(body)
+            call .appendText(message)
         end with
     end function
 
@@ -306,7 +306,7 @@ public class CicadaLogger
     ' streamer (if any) that new events were generated.
     '---------------------------------------------------------------------------
     sub insert                 _
-    ( entry as NotesDocument ) _
+    ( entry as NotesDocument )
         ' TODO: notify streamers
         call entry.save(false, false)
     end sub
@@ -322,8 +322,8 @@ public class CicadaLogger
     '---------------------------------------------------------------------------
     sub info              _
     ( title   as String   _
-    , message as String ) _
-        insert logData("info", title, info_style, message)
+    , message as String )
+        insert logData("info", title, message, info_style)
     end sub
 
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -333,8 +333,8 @@ public class CicadaLogger
     '---------------------------------------------------------------------------
     sub warn              _
     ( title   as String   _
-    , message as String ) _
-        insert logData("warning", title, warn_style, message)
+    , message as String )
+        insert logData("warning", title, message, warn_style)
     end sub
 
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -344,9 +344,9 @@ public class CicadaLogger
     '---------------------------------------------------------------------------
     sub erro              _
     ( title   as String   _
-    , message as String ) _
-        insert logData("error", title, error_style, message)
-    end function
+    , message as String )
+        insert logData("error", title, message, error_style)
+    end sub
 
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
     ' #### Sub fatal
