@@ -1,47 +1,140 @@
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-' cicada/logger -- logging facility for LotusScript                             '
-'                                                                               '
-' Version: 0.1.0                                                                '
-' Author:  Quildreen Motta <http://killdream.github.com/>                       '
-' URL:     http://github.com/killdream/cicada                                   '
-'                                                                               '
-'                                                                               '
-' This library is licensed under the permissive MIT licence:                    '
-'                                                                               '
-' Copyright (c) 2011 Quildreen Motta <http://killdream.github.com/>             '
-'                                                                               '
-' ----------------------------------------------------------------------        '
-' Permission is hereby granted, free of charge, to any person obtaining         '
-' a copy of this software and associated documentation files (the               '
-' "Software"), to deal in the Software without restriction, including           '
-' without limitation the rights to use, copy, modify, merge, publish,           '
-' distribute, sublicense, and/or sell copies of the Software, and to            '
-' permit persons to whom the Software is furnished to do so, subject to         '
-' the following conditions:                                                     '
-'                                                                               '
-' The above copyright notice and this permission notice shall be                '
-' included in all copies or substantial portions of the Software.               '
-'                                                                               '
-' THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,               '
-' EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF            '
-' MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND                         '
-' NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE        '
-' LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION        '
-' OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION         '
-' WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.               '
-' ----------------------------------------------------------------------        '
-'                                                                               '
-'==============================================================================='
-' -- Commentary                                                                 '
-'==============================================================================='
-'                                                                               '
-' See the `README.md' file.                                                     '
-'                                                                               '
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' cicada/logger -- logging facility for LotusScript                            '
+'                                                                              '
+' Version: 0.1.0                                                               '
+' Author:  Quildreen Motta <http://killdream.github.com/>                      '
+' URL:     http://github.com/killdream/cicada                                  '
+'                                                                              '
+'                                                                              '
+' This library is licensed under the permissive MIT licence:                   '
+'                                                                              '
+' Copyright (c) 2011 Quildreen Motta <http://killdream.github.com/>            '
+'                                                                              '
+' Permission is hereby granted, free of charge, to any person obtaining        '
+' a copy of this software and associated documentation files (the              '
+' "Software"), to deal in the Software without restriction, including          '
+' without limitation the rights to use, copy, modify, merge, publish,          '
+' distribute, sublicense, and/or sell copies of the Software, and to           '
+' permit persons to whom the Software is furnished to do so, subject to        '
+' the following conditions:                                                    '
+'                                                                              '
+' The above copyright notice and this permission notice shall be               '
+' included in all copies or substantial portions of the Software.              '
+'                                                                              '
+' THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,              '
+' EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF           '
+' MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND                        '
+' NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE       '
+' LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION       '
+' OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION        '
+' WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.              '
+'                                                                              '
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
+'===============================================================================
+'## Constants
+'===============================================================================
 const NEWLINE = EOL_CRLF
 
 
+'===============================================================================
+'## Class Logger
+'===============================================================================
+'
+' The logger provides a base functionality for logging. This means that,
+' while it does most stuff you'd expect in a logger class — and I've
+' tried to make it sweet to use, — it's API is designed to be extended
+' and abstracted by something else.
+'
+' That said, the `Logger` is based around NotesDocuments. Each event is
+' a new document that takes stores the following information:
+'
+' -   `kind` — The kind of event that's being logged.
+'
+'     The loggger implements three basic kind of events: `info` for
+'     general information; `warn` for warnings; and `error` for errors.
+'
+' -   `title` — The header of the event message.
+'
+' -   `body` — The full message, as a RichText field.
+'
+' These documents are stored freely in the database with no connection
+' to anything else.
+'
+' The logger accepts a [Streamer][] object, to whom it'll post messages
+' about new events being created. The streamer can them consolidate
+' these in a single stream document.
+'
+' 
+' ### Using the logger #########################################################
+'
+' The logger depends on a previously set-up database and form. When
+' constructing a new logger, you need to pass to the constructor which
+' Database you want to use to store the events, and which form you want
+' to use to display the events.
+'
+' **Example:**
+'
+'     %REM
+'       Saves all events in the local `log/events.nsf`, using the
+'       `(Events/Log)` form.
+'     %END REM
+'
+'     dim event_logger as new Logger("", "log/events.nsf", "(Events/Log)")
+'     call event_logger.info("New Event", "Yup, this is a new event")
+' 
+' You'll notice that the logging functions require `call`. Yes, I said
+' functions. This way, the caller can further add information to the log
+' document — sacrificing a little sugar for extensibility is a must in
+' this case.
+'
+' **Note:**
+' > Since `Error` is a reserved keyword in LotusScript (and the language
+' > is case insensitive in regards of identifiers), the function to log
+' > errors is actually called `erro`.
+'
+' 
+' ### Message styling ##########################################################
+'
+' If you decide to use the built-in styles. Each of them export a
+' different NotesRichTextStyle object that you can use to modify how the
+' event message's look.
+'
+' These are only set-up at the Logger object instantiation, so it's safe
+' to play around with them after that.
+'
+' For example, if you wanted the error messages to be displayed in bold
+' font:
+'
+'     dim event_logger as new Logger("", "log/events.nsf", "(Events/Log)")
+'
+'     event_logger.error_style.bold = true
+'     call event_logger.erro("Buu", "SHIT HAPPENED, MAN")
+'
+'
+' ### Extending the logger #####################################################
+'
+' Since the main purpose of the logger is to be easily extended by the
+' user, the class provides several generic functions to split the
+' work. The important functions to keep in mind when extending to add
+' new logging kinds are `insert` and `logData`.
+'
+' `logData` creates a new logging entry in the database, sets the
+' document up with the given information, then returns the document for
+' further modifications. `makeEntry` is an even lower-level function
+' that only creates the base of the form fields.
+'
+' `insert` takes an log entry and saves it in the database, it also
+' notifies the streamer that a new event was added to the database.
+'
+'
+' ### See also #################################################################
+'
+' -   [Streamer][] — Base class for doing event consolidation. Puts
+'     everything inside a single document. Can be extended to support
+'     writing to other medias, like files and so.
+'
+'-------------------------------------------------------------------------------
 public class Logger
 
     public stream_template as String
