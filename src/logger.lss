@@ -40,7 +40,7 @@ const NEWLINE = EOL_CRLF
 
 
 '===============================================================================
-'## Class Logger
+'## Class CicadaLogger
 '===============================================================================
 '
 ' The logger provides a base functionality for logging. This means that,
@@ -48,7 +48,7 @@ const NEWLINE = EOL_CRLF
 ' tried to make it sweet to use, — it's API is designed to be extended
 ' and abstracted by something else.
 '
-' That said, the `Logger` is based around NotesDocuments. Each event is
+' That said, the logger is based around NotesDocuments. Each event is
 ' a new document that takes stores the following information:
 '
 ' -   `kind` — The kind of event that's being logged.
@@ -63,9 +63,9 @@ const NEWLINE = EOL_CRLF
 ' These documents are stored freely in the database with no connection
 ' to anything else.
 '
-' The logger accepts a [Streamer][] object, to whom it'll post messages
-' about new events being created. The streamer can them consolidate
-' these in a single stream document.
+' The logger accepts a [CicadaStreamer][] object, to whom it'll post
+' messages about new events being created. The streamer can them
+' consolidate these in a single stream document.
 '
 ' 
 ' ### Using the logger #########################################################
@@ -82,14 +82,9 @@ const NEWLINE = EOL_CRLF
 '       `(Events/Log)` form.
 '     %END REM
 '
-'     dim event_logger as new Logger("", "log/events.nsf", "(Events/Log)")
-'     call event_logger.info("New Event", "Yup, this is a new event")
+'     dim event_logger as new CicadaLogger("", "log/events.nsf", "(Events/Log)")
+'     event_logger.info "New Event", "Yup, this is a new event"
 ' 
-' You'll notice that the logging functions require `call`. Yes, I said
-' functions. This way, the caller can further add information to the log
-' document — sacrificing a little sugar for extensibility is a must in
-' this case.
-'
 ' **Note:**
 ' > Since `Error` is a reserved keyword in LotusScript (and the language
 ' > is case insensitive in regards of identifiers), the function to log
@@ -108,18 +103,18 @@ const NEWLINE = EOL_CRLF
 ' For example, if you wanted the error messages to be displayed in bold
 ' font:
 '
-'     dim event_logger as new Logger("", "log/events.nsf", "(Events/Log)")
+'     dim event_logger as new CicadaLogger("", "log/events.nsf", "(Events/Log)")
 '
 '     event_logger.error_style.bold = true
-'     call event_logger.erro("Buu", "SHIT HAPPENED, MAN")
+'     event_logger.erro "Buu", "SHIT HAPPENED, MAN"
 '
 '
 ' ### Extending the logger #####################################################
 '
 ' Since the main purpose of the logger is to be easily extended by the
-' user, the class provides several generic functions to split the
-' work. The important functions to keep in mind when extending to add
-' new logging kinds are `insert` and `logData`.
+' user, the class provides generic functions to split the work. The
+' important functions to keep in mind when extending to add new logging
+' kinds are `insert` and `logData`.
 '
 ' `logData` creates a new logging entry in the database, sets the
 ' document up with the given information, then returns the document for
@@ -132,12 +127,12 @@ const NEWLINE = EOL_CRLF
 '
 ' ### See also #################################################################
 '
-' -   [Streamer][] — Base class for doing event consolidation. Puts
-'     everything inside a single document. Can be extended to support
-'     writing to other medias, like files and so.
+' -   [CicadaStreamer][] — Base class for doing event
+'     consolidation. Puts everything inside a single document. Can be
+'     extended to support writing to other medias, like files and so.
 '
 '-------------------------------------------------------------------------------
-public class Logger
+public class CicadaLogger
 
     '===========================================================================
     '### Properties
@@ -188,7 +183,7 @@ public class Logger
     , database as String _
     , template as String )
         set db = new NotesDatabase(server, database)
-        call setupStyles()
+        setupStyles
 
         me.template = template
     end sub
@@ -282,8 +277,8 @@ public class Logger
     '
     ' **See also:**
     '
-    ' -   [Logger.makeEntry][] — lower level function to make event
-    '     documents.
+    ' -   [CicadaLogger.makeEntry][] — lower level function to make
+    '     event documents.
     '---------------------------------------------------------------------------
     function logData                  _
     ( kind    as String               _
@@ -305,61 +300,64 @@ public class Logger
     end function
 
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    ' #### Function insert
+    ' #### Sub insert
     '
     ' Saves an event log entry in the database, and notifies the
     ' streamer (if any) that new events were generated.
     '---------------------------------------------------------------------------
-    function insert            _
+    sub insert                 _
     ( entry as NotesDocument ) _
-    as NotesDocument
         ' TODO: notify streamers
         call entry.save(false, false)
-        set insert = entry
-    end function
+    end sub
 
 
     '===========================================================================
     '### High-level logging functions
     '===========================================================================
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    ' #### Function info
+    ' #### Sub info
     '
     ' Logs a general event.
     '---------------------------------------------------------------------------
-    function info         _
+    sub info              _
     ( title   as String   _
     , message as String ) _
-    as NotesDocument
-        set info = logData("info", title, info_style, message)
-        call insert(info)
-    end function
+        insert logData("info", title, info_style, message)
+    end sub
 
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    ' #### Function warn
+    ' #### Sub warn
     '
     ' Logs a warning.
     '---------------------------------------------------------------------------
-    function warn         _
+    sub warn              _
     ( title   as String   _
     , message as String ) _
-    as NotesDocument
-        set warn = logData("warning", title, warn_style, message)
-        call insert(warn)
-    end function
+        insert logData("warning", title, warn_style, message)
+    end sub
 
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    ' #### Function erro
+    ' #### Sub erro
     '
     ' Logs an error.
     '---------------------------------------------------------------------------
-    function erro         _
+    sub erro              _
     ( title   as String   _
     , message as String ) _
-    as NotesDocument
-        set erro = logData("error", title, error_style, message)
-        call insert(erro)
+        insert logData("error", title, error_style, message)
     end function
+
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' #### Sub fatal
+    '
+    ' Displays a fatal error. Used ultimately when we have errors while
+    ' logging other errors.
+    '---------------------------------------------------------------------------
+    sub fatal _
+    ( message as String )
+        print getDate(Today) + " — FATAL ERROR: " + NEWLINE + message
+    end sub
 
 
     '===========================================================================
@@ -370,23 +368,12 @@ public class Logger
     '
     ' Returns a String with the current date formatted to General Date.
     '---------------------------------------------------------------------------
-    function getDate _
-    ( givenDate )    _
+    private function getDate _
+    ( givenDate )            _
     as String
         getDate = "[" + Format(givenDate, "General Date") + "]"
     end function
 
-    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    ' #### Function fatal
-    '
-    ' Displays a fatal error. Used ultimately when we have errors while
-    ' logging other errors.
-    '---------------------------------------------------------------------------
-    sub fatal _
-    ( message as String )
-        print getDate(Today) + " — FATAL ERROR: " + NEWLINE + message
-    end sub
-    
 end class
 
 
