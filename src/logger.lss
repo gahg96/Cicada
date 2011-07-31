@@ -85,11 +85,6 @@ const NEWLINE = EOL_CRLF
 '     dim event_logger as new CicadaLogger("", "log/events.nsf", "(Events/Log)")
 '     event_logger.info "New Event", "Yup, this is a new event"
 ' 
-' **Note:**
-' > Since `Error` is a reserved keyword in LotusScript (and the language
-' > is case insensitive in regards of identifiers), the function to log
-' > errors is actually called `erro`.
-'
 ' 
 ' ### Message styling ##########################################################
 '
@@ -106,7 +101,7 @@ const NEWLINE = EOL_CRLF
 '     dim event_logger as new CicadaLogger("", "log/events.nsf", "(Events/Log)")
 '
 '     event_logger.error_style.bold = true
-'     event_logger.erro "Buu", "SHIT HAPPENED, MAN"
+'     event_logger.error "Buu", "SHIT HAPPENED, MAN"
 '
 '
 ' ### Extending the logger #####################################################
@@ -305,7 +300,7 @@ public class CicadaLogger
     ' Saves an event log entry in the database, and notifies the
     ' streamer (if any) that new events were generated.
     '---------------------------------------------------------------------------
-    sub insert                 _
+    sub insert               _
     ( entry as NotesDocument )
         ' TODO: notify streamers
         call entry.save(false, false)
@@ -320,8 +315,8 @@ public class CicadaLogger
     '
     ' Logs a general event.
     '---------------------------------------------------------------------------
-    sub info              _
-    ( title   as String   _
+    sub info            _
+    ( title   as String _
     , message as String )
         insert logData("info", title, message, info_style)
     end sub
@@ -331,19 +326,19 @@ public class CicadaLogger
     '
     ' Logs a warning.
     '---------------------------------------------------------------------------
-    sub warn              _
-    ( title   as String   _
+    sub warn            _
+    ( title   as String _
     , message as String )
         insert logData("warning", title, message, warn_style)
     end sub
 
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-    ' #### Sub erro
+    ' #### Sub error
     '
     ' Logs an error.
     '---------------------------------------------------------------------------
-    sub erro              _
-    ( title   as String   _
+    sub error           _
+    ( title   as String _
     , message as String )
         insert logData("error", title, message, error_style)
     end sub
@@ -354,7 +349,7 @@ public class CicadaLogger
     ' Displays a fatal error. Used ultimately when we have errors while
     ' logging other errors.
     '---------------------------------------------------------------------------
-    sub fatal _
+    sub fatal           _
     ( message as String )
         print getDate(Today) + " — FATAL ERROR: " + NEWLINE + message
     end sub
@@ -371,7 +366,7 @@ public class CicadaLogger
     private function getDate _
     ( givenDate )            _
     as String
-        getDate = "[" + Format(givenDate, "General Date") + "]"
+        getDate = "[" + format(givenDate, "General Date") + "]"
     end function
 
 end class
