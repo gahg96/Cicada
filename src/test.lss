@@ -85,10 +85,10 @@ public class CicadaAssertion
     ' **message**:
     '   A description of the test that was performed.
     '---------------------------------------------------------------------------
-    sub new _
-    ( passed as Boolean _
+    sub new              _
+    ( passed  as Boolean _
     , message as String )
-        me.passed = passed
+        me.passed  = passed
         me.message = message
     end sub
 
@@ -120,10 +120,10 @@ public class CicadaTestResult
     ' A list of assertions that are part of this functionality test.
     public assertions() as CicadaAssertion
 
-    ' The time when the test started running
+    ' The time when the test started running, in clock ticks.
     public startTime as Variant
 
-    ' How much time took the test to complete, in miliseconds
+    ' How much time took the test to complete, in miliseconds.
     public runTime as Variant
 
 
@@ -141,42 +141,99 @@ public class CicadaTestResult
     '   A short description of this test, like which functionality it's
     '   testing.
     '---------------------------------------------------------------------------
-    sub new _
+    sub new                _
     ( identifier as String )
         me.identifier = identifier
-        startTime = currentTicks
+        startTime     = currentTicks
     end sub
 
 end class
 
-
+
+'===============================================================================
+'## Class CicadaFixture
+'===============================================================================
+'
+' A fixture is a collection of related tests, that share initialisation
+' and tearing code, but each test executes in its own little sandbox and
+' affects only its share of the data structures (the ones set up by the
+' initialisation and tearing code, of course).
+'
+'-------------------------------------------------------------------------------
 public class CicadaFixture
-
+
+    '===========================================================================
+    '### Properties
+    '===========================================================================
+    ' A list of results of all tests performed by this object.
     public results() as CicadaTestResult
-    current as CicadaTestResult
 
+    ' The results for the current test being ran
+    current          as CicadaTestResult
 
+
+    '===========================================================================
+    '### Setup functions
+    '===========================================================================
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' #### Function make
+    '
+    ' Returns a new instance of this class.
+    '
+    ' This is used by the test swarming tool to create new instances of
+    ' the tests it needs to run.
+    '---------------------------------------------------------------------------
     function make() _
     as CicadaFixture
         set make = new CicadaFixture
     end function
 
-
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' #### Function run
+    '
+    ' Runs all tests in this test case and saves the results.
+    '
+    ' You need to manually call all the test functions in the class,
+    ' since LotusScript does not allow for any kind of inspection or
+    ' dynamic method call(?).
+    '
+    ' Tests need to be properly set-up before running, thus you should
+    ' call `test' before running each assertion, and `saveResult' after
+    ' running all of them.
+    '---------------------------------------------------------------------------
     sub run()
         redim results(0)
     end sub
 
-
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' #### Function setup
+    '
+    ' Called before each test to set up the environment for the test.
+    '---------------------------------------------------------------------------
     sub setup()
         ' not implemented
     end sub
 
-
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' #### Function tearDown
+    '
+    ' Called after each test to run any cleaning tasks in the previously
+    ' set up environment.
+    '---------------------------------------------------------------------------
     sub tearDown()
         ' not implemented
     end sub
 
-
+
+    '===========================================================================
+    '### Test tracking helpers
+    '===========================================================================
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' #### Sub saveResult
+    '
+    ' Stores the results of a previously ran (and properly set-up
+    ' through a call to `test') test in the list of test results.
+    '---------------------------------------------------------------------------
     sub saveResult()
         if not (current is nothing) then
             call tearDown()
@@ -185,8 +242,12 @@ public class CicadaFixture
         end if
     end sub
 
-
-    sub test _
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' #### Sub test
+    '
+    ' Prepares the instance to run a new functionality test.
+    '---------------------------------------------------------------------------
+    sub test               _
     ( identifier as String )
         call saveResult()
         set current = new CicadaTestResult(identifier)
@@ -194,9 +255,18 @@ public class CicadaFixture
     end sub
     
 
-    sub assert _
+
+    '===========================================================================
+    '### Assertion functions
+    '===========================================================================
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' #### Sub assert
+    '
+    ' Tests for the validity of a single expression.
+    '---------------------------------------------------------------------------
+    sub assert              _
     ( expression as Boolean _
-    , message as String )
+    , message    as String )
         dim item as CicadaAssertion
         set item = new CicadaAssertion(expression, message)
         
@@ -205,10 +275,14 @@ public class CicadaFixture
         end with
     end sub
 
-
-    sub refute _
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' #### Sub refute
+    '
+    ' Tests for the non-validity of a single expression.
+    '---------------------------------------------------------------------------
+    sub refute              _
     ( expression as Boolean _
-    , message as String )
+    , message    as String )
         assert not expression, message
     end sub
 

@@ -35,7 +35,7 @@
 const LSI_TICKS = 6
 const LSI_TICKS_PER_SEC = 7
 
-
+' Increases the array's capacity and returns the new size
 public function arrayInc(arr) _
 as Integer
     on error 200 resume next 'ErrUninitDynArray
@@ -44,19 +44,19 @@ as Integer
     redim preserve arr(arrayInc)
 end function
 
-
+' Returns the current clock ticks
 public function currentTicks() _
 as Long
     currentTicks = GetThreadInfo(LSI_TICKS)
 end function
 
-
+' Returns the frequency of the processor's clock ticks in seconds
 public function tickFrequency() _
 as Long
     tickFrequency = GetThreadInfo(LSI_TICKS_PER_SECOND)
 end function
 
-
+' Returns the difference between two clock ticks, in miliseconds
 public function timeDiff(start, ending) _
 as Double
     timeDiff = (ending - start) / tickFrequency / 1000
