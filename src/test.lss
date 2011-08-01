@@ -1,0 +1,215 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' cicada/test -- basis for writing test cases                                  '
+' ===========================================                                  '
+'                                                                              '
+' Version: 0.1.0                                                               '
+' Author:  Quildreen Motta <http://killdream.github.com/>                      '
+' URL:     http://github.com/killdream/cicada                                  '
+'                                                                              '
+'                                                                              '
+' This library is licensed under the permissive MIT licence:                   '
+'                                                                              '
+' > Copyright (c) 2011 Quildreen Motta <http://killdream.github.com/>          '
+' >                                                                            '
+' > Permission is hereby granted, free of charge, to any person obtaining      '
+' > a copy of this software and associated documentation files (the            '
+' > "Software"), to deal in the Software without restriction, including        '
+' > without limitation the rights to use, copy, modify, merge, publish,        '
+' > distribute, sublicense, and/or sell copies of the Software, and to         '
+' > permit persons to whom the Software is furnished to do so, subject to      '
+' > the following conditions:                                                  '
+' >                                                                            '
+' > The above copyright notice and this permission notice shall be             '
+' > included in all copies or substantial portions of the Software.            '
+' >                                                                            '
+' > THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,            '
+' > EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF         '
+' > MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND                      '
+' > NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE     '
+' > LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION     '
+' > OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION      '
+' > WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.            '
+'                                                                              '
+'------------------------------------------------------------------------------'
+
+
+'===============================================================================
+'## Dependencies
+'===============================================================================
+use "cicada/util" '— arrayInc, timeDiff, currentTicks
+
+
+'===============================================================================
+'## Class CicadaAssertion
+'===============================================================================
+'
+' The assertion stores information about a single assertion in a
+' well defined interface, so it can be manipulated later on by
+' [CicadaReporter][] instances.
+'
+' An assertion is a simple test, performed by checking the expectations
+' of an expression to see wether it has passed or not. For example,
+' `1 = 1` would be an assertion:
+'
+'     assert 1 = 1, "Asserts integer equality works."
+'
+' Although this class is public, it's not meant to be used directly, but
+' rather to serve as basis to the [CicadaFixture][] class.
+'
+'-------------------------------------------------------------------------------
+public class CicadaAssertion
+
+    '===========================================================================
+    '### Properties
+    '===========================================================================
+    ' Whether the assertion passed the provided test or not.
+    public passed as Boolean
+
+    ' The message describing this assertion.
+    public message as String
+
+
+    '===========================================================================
+    '### Methods
+    '===========================================================================
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' #### Sub new
+    '
+    ' Creates a new instance of the [CicadaAssertion][] class.
+    '
+    ' Paramaters:
+    '
+    ' **passed**:
+    '   If the assertion test was successful.
+    '
+    ' **message**:
+    '   A description of the test that was performed.
+    '---------------------------------------------------------------------------
+    sub new _
+    ( passed as Boolean _
+    , message as String )
+        me.passed = passed
+        me.message = message
+    end sub
+
+end class
+
+
+'===============================================================================
+'## Class CicadaTestResult
+'===============================================================================
+'
+' Stores information about a group of related assertions. A test is a
+' more higher-level data, in which it cares about a whole functionality
+' instead of single assertions.
+'
+' Like [CicadaAssertion][], this class is just used as a
+' data-structure. It does not manipulate the information stored in any
+' way, as that's a job for the [CicadaFixture][] objects.
+'
+'-------------------------------------------------------------------------------
+public class CicadaTestResult
+
+    '===========================================================================
+    '### Properties
+    '===========================================================================
+    ' A short description for this test, such as which functionality
+    ' it's testing.
+    public identifier as String
+
+    ' A list of assertions that are part of this functionality test.
+    public assertions() as CicadaAssertion
+
+    ' The time when the test started running
+    public startTime as Variant
+
+    ' How much time took the test to complete, in miliseconds
+    public runTime as Variant
+
+
+    '===========================================================================
+    '### Methods
+    '===========================================================================
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' #### Sub new
+    '
+    ' Creates a new instance of the test result.
+    '
+    ' Parameters:
+    '
+    ' **identifier**:
+    '   A short description of this test, like which functionality it's
+    '   testing.
+    '---------------------------------------------------------------------------
+    sub new _
+    ( identifier as String )
+        me.identifier = identifier
+        startTime = currentTicks
+    end sub
+
+end class
+
+
+public class CicadaFixture
+
+    public results() as CicadaTestResult
+    current as CicadaTestResult
+
+
+    function make() _
+    as CicadaFixture
+        set make = new CicadaFixture
+    end function
+
+
+    sub run()
+        redim results(0)
+    end sub
+
+
+    sub setup()
+        ' not implemented
+    end sub
+
+
+    sub tearDown()
+        ' not implemented
+    end sub
+
+
+    sub saveResult()
+        if not (current is nothing) then
+            call tearDown()
+            current.runTime = timeDiff(currentTicks, current.startTime)
+            set results(arrayInc(results)) = current
+        end if
+    end sub
+
+
+    sub test _
+    ( identifier as String )
+        call saveResult()
+        set current = new CicadaTestResult(identifier)
+        call setup()
+    end sub
+    
+
+    sub assert _
+    ( expression as Boolean _
+    , message as String )
+        dim item as CicadaAssertion
+        set item = new CicadaAssertion(expression, message)
+        
+        with current
+            set .assertions(arrayInc(.assertions)) = item
+        end with
+    end sub
+
+
+    sub refute _
+    ( expression as Boolean _
+    , message as String )
+        assert not expression, message
+    end sub
+
+end class
